@@ -40,6 +40,9 @@ sort_by_len=true         # whether to sort the utterances by their lengths
 norm_vars=true           # whether to apply variance normalization when we do cmn
 add_deltas=true          # whether to add deltas
 copy_feats=true          # whether to copy features into a local dir (on the GPU machine)
+subsample_feats=false    # whether to subsample features, i.e. only take every n-th (default: n=2) feature vector
+splice_feats=false       # whether to splice features  with left and right context
+
 feats_tmpdir=            # the tmp dir to save the copied features, when copy_feats=true
 
 # status of learning rate schedule; useful when training is resumed from a break point
@@ -79,6 +82,8 @@ done
 ## Setup up features
 echo $norm_vars > $dir/norm_vars  # output feature configs which will be used in decoding
 echo $add_deltas > $dir/add_deltas
+echo $splice_feats > $dir/splice_feats
+echo $subsample_feats > $dir/subsample_feats
 
 if $sort_by_len; then
   feat-to-len scp:$data_tr/feats.scp ark,t:- | awk '{print $2}' > $dir/len.tmp || exit 1;
@@ -96,6 +101,7 @@ feats_cv="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2
 
 # Save the features to a local dir on the GPU machine. On Linux, this usually points to /tmp
 if $copy_feats; then
+  echo "copy feats"
   tmpdir=$(mktemp -d $feats_tmpdir);
   copy-feats "$feats_tr" ark,scp:$tmpdir/train.ark,$dir/train_local.scp || exit 1;
   copy-feats "$feats_cv" ark,scp:$tmpdir/cv.ark,$dir/cv_local.scp || exit 1;
@@ -105,9 +111,23 @@ if $copy_feats; then
 fi
 
 if $add_deltas; then
+  echo "adding deltas"
   feats_tr="$feats_tr add-deltas ark:- ark:- |"
   feats_cv="$feats_cv add-deltas ark:- ark:- |"
 fi
+
+if $splice_feats; then
+  echo "adding splice-feats"
+  feats_tr="$feats_tr splice-feats ark:- ark:- |"
+  feats_cv="$feats_cv splice-feats ark:- ark:- |"
+fi
+
+if $subsample_feats; then
+  echo "adding subsample-feats"
+  feats_tr="$feats_tr subsample-feats --n=2 ark:- ark:- |"
+  feats_cv="$feats_cv subsample-feats --n=2 ark:- ark:- |"
+fi
+
 ## End of feature setup
 
 ## Set up labels  
