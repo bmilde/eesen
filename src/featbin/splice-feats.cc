@@ -19,7 +19,6 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-//#include "matrix/kaldi-matrix.h"
 #include "cpucompute/matrix.h"
 #include "feat/feature-functions.h"
 
