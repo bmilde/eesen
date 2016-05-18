@@ -25,7 +25,7 @@ if [ $stage -le 1 ]; then
   local/tedlium_download_data.sh || exit 1;
 
   # Use the same data preparation script from Kaldi
-  local/tedlium_prepare_data.sh || exit 1
+  local/tedlium_prepare_data.sh --data-dir db/TEDLIUM_release2 || exit 1
 
   # Construct the phoneme-based lexicon
   local/tedlium_prepare_phn_dict.sh || exit 1;
@@ -78,10 +78,12 @@ if [ $stage -le 3 ]; then
   utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train_cv05/text "<UNK>" | gzip -c - > $dir/labels.cv.gz
 
   # Train the network with CTC. Refer to the script for details about the arguments
-  steps/train_ctc_parallel.sh --add-deltas true --num-sequence 20 --frame-num-limit 25000 \
-    --learn-rate 0.00004 --report-step 1000 --halving-after-epoch 12 \
-    --feats-tmpdir $dir/XXXXX \
+  steps/train_ctc_parallel_x3.sh --end-halving-inc 0.001 --halving-factor 0.7 \
+    --add-deltas false --num-sequence 20 --frame-num-limit 20000 \
+    --learn-rate 4e-5 --report-step 1000 --halving-after-epoch 12 --min-iters 28 \
+    --max-iters 32 --splice-feats true --subsample-feats true --min-len 20 \
     data/train_tr95 data/train_cv05 $dir || exit 1;
+
 
   echo =====================================================================
   echo "                            Decoding                               "
